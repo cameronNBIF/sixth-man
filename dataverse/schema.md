@@ -32,7 +32,7 @@ This is the triage backbone — the agent checks every sender against this list.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| RunID | Text (Primary) | GUID per agent run |
+| RunID | Autonumber | Serialized number increments per additional entry |
 | RunType | Choice | MorningBrief, MeetingBrief, FridayPlan, AdHoc |
 | TriggerTime | Date/Time | When the run fired |
 | Status | Choice | Success, PartialFailure, Error |
