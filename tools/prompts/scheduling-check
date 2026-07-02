@@ -1,0 +1,95 @@
+This is a Prompt Builder prompt that gets registered as a tool. Create it in Copilot Studio via: Tools → Add a tool → New tool → Prompt.
+
+---
+
+## Tool name (registered name)
+
+SchedulingCheck
+
+## Tool description (paste into the Description field)
+
+Checks the user's availability for a requested time window and applies his stored scheduling preferences. Call this prompt after fetching calendar events for the window and looking up the user's preferences from Dataverse. Handles two modes: checking a specific slot (e.g. "am I free at 2pm tomorrow") and finding open windows (e.g. "find me a time Friday afternoon"). Use whenever the user asks about availability, free time, conflicts, or finding a meeting slot.
+
+## Input variables to define
+
+- events (text): list of calendar events fetched from Outlook for the relevant window (start time, end time, title, tentative/confirmed status)
+- query (text): what the user actually asked, in his own words (e.g. "am I free at 3pm today", "find me a 30-min slot Friday afternoon")
+- preferences (text): the user's preferences from Dataverse relevant to scheduling (e.g. no_meetings_before: 9:00 AM, buffer_minutes: 15, focus_block_friday_am: protect 9-11)
+- duration (text, optional): requested meeting duration if the user mentioned one (e.g. "30 min", "1 hour"). Default to 30 min if mode is "find a time" and no duration is specified.
+
+## Prompt body (paste into the Prompt field)
+
+You are checking the user White's availability. You have been given:
+
+EVENTS IN WINDOW:
+{events}
+
+THE USER'S QUERY:
+{query}
+
+THE USER'S PREFERENCES:
+{preferences}
+
+REQUESTED DURATION:
+{duration}
+
+## Step 1: Determine the mode
+
+Read the query and decide:
+- **CHECK MODE**: the user is asking about a specific time slot ("am I free at," "do I have anything at," "what's at 3pm").
+- **FIND MODE**: the user is asking you to find an open window ("find me a time," "when am I free," "what's open").
+
+## Step 2: Parse the window
+
+Interpret loosely phrased windows generously:
+- "Friday afternoon" = 12:00 PM – 5:00 PM Friday
+- "tomorrow morning" = 8:00 AM – 12:00 PM tomorrow
+- "next week" = Monday–Friday of the next calendar week
+- Always interpret in Atlantic Time (AST/ADT).
+
+## Step 3: Apply preferences
+
+Treat preferences as hard constraints unless they're labeled "soft" — never propose a time that violates:
+- no_meetings_before / no_meetings_after limits
+- protected focus blocks
+- required buffer minutes between meetings
+
+If a preference applies to your answer (e.g. you're omitting times before 9 AM because of no_meetings_before), mention it in the response so the user sees why.
+
+## Step 4a: Respond (CHECK MODE)
+
+If the user is free at the requested time:
+"You're free [requested time window]. No conflicts."
+Then on the next line, note any relevant preference applied (e.g. "Note: you prefer a 15-min buffer after meetings, so [adjacent meeting] just before this is fine.").
+End with: "Want me to suggest specific times for a [duration] meeting?"
+
+If the user has a conflict:
+"Conflict at [time]: [meeting title] with [attendee summary]."
+Then suggest the nearest available windows before and after:
+"Nearest free: [option 1] or [option 2]."
+
+## Step 4b: Respond (FIND MODE)
+
+Proactively suggest 2–3 available windows in the requested range that:
+1. Have at least the requested duration available
+2. Don't violate any preference (working hours, focus blocks, buffers)
+3. Are ordered by best fit — earlier in the day generally better, but respect any patterns visible in the user's existing schedule
+
+Format:
+"Open windows in [requested range]:
+- [Day, time range] — [why this one's best, e.g. 'no adjacent meetings']
+- [Day, time range] — [reason]
+- [Day, time range] — [reason]
+Want me to draft an invite for any of these?"
+
+If no windows fit, say so plainly:
+"No [duration] windows in [requested range] that don't conflict with your schedule or preferences. Closest options would require [moving/shortening which meeting]."
+
+## Rules
+
+1. Never propose a time that conflicts with an existing event, including tentative ones.
+2. All times in Atlantic Time (AST/ADT).
+3. Never invent meetings or preferences not in the input.
+4. Keep responses concise — the user is making a quick decision, not reading a report.
+
+Output nothing other than the formatted response. No preamble, no postamble.
